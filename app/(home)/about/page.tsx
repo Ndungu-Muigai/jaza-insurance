@@ -110,7 +110,6 @@ const Reveal = ({ children, className = '' }: { children: ReactNode; className?:
 }
 
 //Partner (agent lead) form: markup only, no submit logic yet
-
 const PartnerForm = () => 
 {
   //State to handle form data
@@ -152,22 +151,22 @@ const PartnerForm = () =>
     <form className="module-form lead-form mt-8 space-y-5 rounded-2xl border border-slate-200 bg-white p-8 shadow-xl shadow-[#0b2a4a]/5 sm:p-10" id="partner-form" data-form-type="agent" noValidate onSubmit={handleSubmit}>
       <label className="block text-sm font-semibold text-slate-700">
         Your full name
-        <input type="text" name="name" autoComplete="name" required className={fieldClass} />
+        <input type="text" name="name" autoComplete="name" required className={fieldClass} onChange={handleChange}/>
       </label>
 
       <label className="block text-sm font-semibold text-slate-700">
         Your phone number
-        <input type="tel" name="phone" autoComplete="tel" required className={fieldClass} />
+        <input type="tel" name="phone" autoComplete="tel" required className={fieldClass} onChange={handleChange}/>
       </label>
 
       <label className="block text-sm font-semibold text-slate-700">
         Email (optional)
-        <input type="email" name="email" autoComplete="email" className={fieldClass} />
+        <input type="email" name="email" autoComplete="email" className={fieldClass} onChange={handleChange}/>
       </label>
 
       <label className="block text-sm font-semibold text-slate-700">
         Tell us about yourself
-        <input type="text" name="about" placeholder="Your town, your background, why insurance" className={fieldClass} />
+        <input type="text" name="about" placeholder="Your town, your background, why insurance" className={fieldClass} onChange={handleChange}/>
       </label>
 
       <label className="consent flex items-start gap-3 pt-1 text-sm text-slate-600">
