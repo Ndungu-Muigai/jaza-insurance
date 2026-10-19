@@ -238,7 +238,7 @@ const MotorPage = () =>
                 </section>
 
                 {/* CLAIMS */}
-                <section className="mx-auto max-w-6xl scroll-mt-24 px-6 py-20 md:px-[5%]" id="claims">
+                <section className="scroll-mt-24 px-6 py-20 md:px-[5%]" id="claims">
                     <div className="mb-10 max-w-2xl">
                         <p className={eyebrow}>Claims</p>
                         <h2 className="mt-2 text-3xl font-extrabold text-[#0b2a4a] lg:text-4xl">How to make a claim</h2>
