@@ -5,7 +5,7 @@ import Link from "next/link"
 const Footer = () =>
 {
     //Getting the current year
-    const currentYear = new Date().getFullYear()
+    // const currentYear = new Date().getFullYear()
 
     return(
         <>
@@ -96,7 +96,7 @@ const Footer = () =>
 
                 <div className="relative border-t border-white/10 p-6 md:px-[5%]">
                     <p className="copyright mx-auto max-w-7xl text-center text-xs text-slate-400">
-                        &copy; {currentYear} Jaza Insurance Agency. All rights reserved.
+                        &copy; Jaza Insurance Agency. All rights reserved.
                     </p>
                 </div>
             </footer>
