@@ -1,11 +1,18 @@
 'use client'
 
+import type { Metadata } from "next";
 import Image from 'next/image'
 import Link from 'next/link'
 import {useEffect, useRef, useState, type ReactNode} from 'react'
 
 //Data type for the chapter section
 type Chapter = { num: string; label: string; title: string; text: string }
+
+//Specifying the title of this page for SEO and social sharing
+export const metadata: Metadata = 
+{
+  title: 'About Us',
+}
 
 const Chapters: Chapter[] = [
   {
