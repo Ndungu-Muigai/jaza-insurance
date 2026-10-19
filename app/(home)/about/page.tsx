@@ -1,13 +1,13 @@
-'use client';
+'use client'
 
-import Image from 'next/image';
-import Link from 'next/link';
-import {useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode,} from 'react';
+import Image from 'next/image'
+import Link from 'next/link'
+import {useEffect, useRef, useState, type ReactNode} from 'react'
 
 //Data type for the chapter section
-type Chapter = { num: string; label: string; title: string; text: string };
+type Chapter = { num: string; label: string; title: string; text: string }
 
-const CHAPTERS: Chapter[] = [
+const Chapters: Chapter[] = [
   {
     num: '01',
     label: 'Who we are',
@@ -32,12 +32,12 @@ const CHAPTERS: Chapter[] = [
     title: 'Your own insurance business starts here',
     text: 'You do not need a big office to build something lasting. If you are driven and willing to learn, we will talk you through the road ahead.',
   },
-];
+]
 
 //Data type for the person section
-type Person = { name: string; role: string; tagline: string; image: string };
+type Person = { name: string; role: string; tagline: string; image: string }
 
-const TEAM: Person[] = [
+const Team: Person[] = [
   {
     name: 'Lawrence Kamanda',
     role: 'Chief Executive Officer',
@@ -56,7 +56,7 @@ const TEAM: Person[] = [
     tagline: 'Keeps our numbers accurate, transparent and on time.',
     image: '/images/paul-muchina.jpg',
   },
-];
+]
 
 const NETWORK = [
   {
@@ -69,245 +69,175 @@ const NETWORK = [
     href: 'https://jibuerp.com/',
     blurb: 'Business software that brings operations together in one place.',
   },
-];
-
-const QUICK_LINKS = [
-  { label: 'Home', href: '/' },
-  { label: 'Motor insurance', href: '/motor' },
-  { label: 'Medical insurance', href: '/medical' },
-  { label: 'Home insurance', href: '/home-insurance' },
-  { label: 'Travel insurance', href: '/travel' },
-  { label: 'About us', href: '/about' },
-];
+]
 
 //Shared class strings
-const eyebrow = 'text-sm font-extrabold uppercase tracking-[0.12em] text-[#f26a21]';
-const fieldClass =
-  'mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3.5 py-3 text-base font-normal text-slate-900 shadow-sm transition focus:border-[#f26a21] focus:outline-none focus:ring-4 focus:ring-[#f26a21]/20';
-const socialCard =
-  'group flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white transition hover:-translate-y-0.5 hover:border-[#f26a21] hover:bg-[#f26a21]/10';
+const eyebrow = 'text-sm font-extrabold uppercase tracking-[0.12em] text-[#f26a21]'
+const fieldClass = 'mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3.5 py-3 text-base font-normal text-slate-900 shadow-sm transition focus:border-[#f26a21] focus:outline-none focus:ring-4 focus:ring-[#f26a21]/20'
 
 //Small helpers
 /** Fades and slides its children in the first time they scroll into view. */
-function Reveal({ children, className = '' }: { children: ReactNode; className?: string }) 
+const Reveal = ({ children, className = '' }: { children: ReactNode; className?: string }) => 
 {
-  const ref = useRef<HTMLDivElement>(null);
-  const [shown, setShown] = useState<boolean>(false);
+  const ref = useRef<HTMLDivElement>(null)
+  const [shown, setShown] = useState<boolean>(false)
 
   useEffect(() => 
   {
-    const el = ref.current;
-    if (!el) return;
+    const el = ref.current
+    if (!el) return
     const observer = new IntersectionObserver(([entry]) => 
       {
         if (entry.isIntersecting) 
         {
-          setShown(true);
-          observer.disconnect();
+          setShown(true)
+          observer.disconnect()
         }
       },
       { 
         threshold: 0.15 
       }
     )
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   return (
     <div ref={ref} className={`reveal transition duration-700 ease-out motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none ${shown ? 'in translate-y-0 opacity-100' : 'translate-y-6 opacity-0'} ${className}`}>
       {children}
     </div>
-  );
+  )
 }
 
-/* ------------------------------------------------------------------ */
-/* Partner (agent lead) form                                           */
-/* ------------------------------------------------------------------ */
+//Partner (agent lead) form: markup only, no submit logic yet
 
-type PartnerLead = {
-  name: string;
-  phone: string;
-  email: string;
-  about: string;
-  consent: boolean;
-  website: string; // honeypot: real users leave this empty
-};
+const PartnerForm = () => 
+{
+  //State to handle form data
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    about: '',
+    consent: false,
+  })
 
-type FormMessage = { kind: '' | 'ok' | 'error'; text: string };
-
-const EMPTY_LEAD: PartnerLead = { name: '', phone: '', email: '', about: '', consent: false, website: '' };
-
-function validateLead(values: PartnerLead): string {
-  if (!values.name.trim()) return 'Please enter your full name.';
-  if (!/^[+\d][\d\s-]{6,}$/.test(values.phone.trim())) return 'Please enter a valid phone number.';
-  if (values.email.trim() && !/^\S+@\S+\.\S+$/.test(values.email.trim())) {
-    return 'Please enter a valid email address.';
+  //Function to handle input changes
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => 
+  {
+    const { name, value, type, checked } = e.target
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: type === 'checkbox' ? checked : value,
+    }))
   }
-  if (!values.consent) return 'Please tick the consent box.';
-  return '';
-}
 
-async function submitPartnerLead(values: PartnerLead): Promise<boolean> {
-  // TODO API: POST /api/partner-leads with { name, phone, email, about, consent } (omit `website`)
-  await new Promise((resolve) => setTimeout(resolve, 600));
-  console.info('Partner lead (not yet sent to a server):', values.name);
-  return true;
-}
+  //Function to handle form submission
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => 
+  {
+    e.preventDefault()
 
-function PartnerForm() {
-  const [lead, setLead] = useState<PartnerLead>(EMPTY_LEAD);
-  const [message, setMessage] = useState<FormMessage>({ kind: '', text: '' });
-  const [submitting, setSubmitting] = useState<boolean>(false);
-
-  const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
-    const { name, type, value, checked } = e.target;
-    setLead((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-  };
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault();
-
-    // Spam trap: pretend success, send nothing.
-    if (lead.website) {
-      setMessage({ kind: 'ok', text: 'Thank you. We will call you soon.' });
-      return;
+    //Checking if the form is filled correctly
+    if (!formData.name || !formData.phone || !formData.consent)
+    {
+      alert('Please fill in all required fields and agree to the consent.')
+      return
     }
 
-    const error = validateLead(lead);
-    if (error) {
-      setMessage({ kind: 'error', text: error });
-      return;
-    }
-
-    setSubmitting(true);
-    setMessage({ kind: '', text: '' });
-    const ok = await submitPartnerLead(lead);
-    setSubmitting(false);
-
-    if (ok) {
-      setLead(EMPTY_LEAD);
-      setMessage({ kind: 'ok', text: 'Thank you. We will call you soon.' });
-    } else {
-      setMessage({ kind: 'error', text: 'Something went wrong. Please try again.' });
-    }
-  };
-
+    //Sending the data to the backend (this is a placeholder, replace with actual API call)
+    console.log('Form submitted:', formData)
+    alert('Thank you for your submission! We will contact you soon.')
+  }
   return (
     <form className="module-form lead-form mt-8 space-y-5 rounded-2xl border border-slate-200 bg-white p-8 shadow-xl shadow-[#0b2a4a]/5 sm:p-10" id="partner-form" data-form-type="agent" noValidate onSubmit={handleSubmit}>
       <label className="block text-sm font-semibold text-slate-700">
         Your full name
-        <input type="text" name="name" autoComplete="name" required value={lead.name} onChange={handleChange} className={fieldClass} />
+        <input type="text" name="name" autoComplete="name" required className={fieldClass} />
       </label>
 
       <label className="block text-sm font-semibold text-slate-700">
         Your phone number
-        <input type="tel" name="phone" autoComplete="tel" required value={lead.phone} onChange={handleChange} className={fieldClass} />
+        <input type="tel" name="phone" autoComplete="tel" required className={fieldClass} />
       </label>
 
       <label className="block text-sm font-semibold text-slate-700">
         Email (optional)
-        <input type="email" name="email" autoComplete="email" value={lead.email} onChange={handleChange} className={fieldClass} />
+        <input type="email" name="email" autoComplete="email" className={fieldClass} />
       </label>
 
       <label className="block text-sm font-semibold text-slate-700">
         Tell us about yourself
-        <input type="text" name="about" placeholder="Your town, your background, why insurance" value={lead.about} onChange={handleChange} className={fieldClass} />
+        <input type="text" name="about" placeholder="Your town, your background, why insurance" className={fieldClass} />
       </label>
 
-      <div className="hp hidden" aria-hidden="true">
-        <label>
-          Leave this empty
-          <input type="text" name="website" tabIndex={-1} autoComplete="off" value={lead.website} onChange={handleChange} />
-        </label>
-      </div>
-
       <label className="consent flex items-start gap-3 pt-1 text-sm text-slate-600">
-        <input type="checkbox" name="consent" required checked={lead.consent} onChange={handleChange} className="mt-1 h-4 w-4 rounded border-slate-300 accent-[#f26a21]" />
+        <input type="checkbox" name="consent" required className="mt-1 h-4 w-4 rounded border-slate-300 accent-[#f26a21]" />
         <span>I agree that Jaza Insurance Agency may use my details to contact me about this request.</span>
       </label>
 
-      <button
-        className="btn btn-primary mt-2 w-full rounded-lg bg-[#f26a21] py-3.5 font-semibold text-white shadow-lg shadow-[#f26a21]/30 transition hover:bg-[#d4560f] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f26a21]/30 disabled:cursor-wait disabled:opacity-60"
-        type="submit"
-        disabled={submitting}
-      >
-        {submitting ? 'Sending...' : 'Yes, I want to get started'}
-      </button>
-
-      <p
-        className={`form-message mt-2 min-h-[1.5em] text-center text-sm font-semibold ${
-          message.kind === 'error' ? 'text-[#b3261e]' : message.kind === 'ok' ? 'text-[#1b6e3c]' : ''
-        }`}
-        role="status"
-      >
-        {message.text}
-      </p>
+      <button className="btn btn-primary mt-2 w-full rounded-lg bg-[#f26a21] py-3.5 font-semibold text-white shadow-lg shadow-[#f26a21]/30 transition hover:bg-[#d4560f] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f26a21]/30" type="submit">Yes, I want to get started</button>
     </form>
-  );
+  )
 }
 
-/* ------------------------------------------------------------------ */
-/* Page                                                                */
-/* ------------------------------------------------------------------ */
-
-export default function AboutPage() {
-  const [activeChapter, setActiveChapter] = useState<number>(0);
-  const progressRef = useRef<HTMLDivElement>(null);
-  const chapterRefs = useRef<(HTMLElement | null)[]>([]);
+// Main page component
+const AboutPage = () => 
+{
+  const [activeChapter, setActiveChapter] = useState<number>(0)
+  const progressRef = useRef<HTMLDivElement>(null)
+  const chapterRefs = useRef<(HTMLElement | null)[]>([])
 
   // Reading progress bar
-  useEffect(() => {
-    const update = (): void => {
-      const bar = progressRef.current;
-      if (!bar) return;
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      const ratio = max > 0 ? Math.min(window.scrollY / max, 1) : 0;
-      bar.style.transform = `scaleX(${ratio})`;
-    };
-    update();
-    window.addEventListener('scroll', update, { passive: true });
-    window.addEventListener('resize', update);
-    return () => {
-      window.removeEventListener('scroll', update);
-      window.removeEventListener('resize', update);
-    };
-  }, []);
+  useEffect(() => 
+  {
+    const update = (): void => 
+    {
+      const bar = progressRef.current
+      if (!bar) return
+      const max = document.documentElement.scrollHeight - window.innerHeight
+      const ratio = max > 0 ? Math.min(window.scrollY / max, 1) : 0
+      bar.style.transform = `scaleX(${ratio})`
+    }
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    return () => 
+    {
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [])
 
   // Pinned chapters: the one crossing the middle of the viewport becomes active
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          const index = Number((entry.target as HTMLElement).dataset.index);
-          if (!Number.isNaN(index)) setActiveChapter(index);
-        });
-      },
-      { rootMargin: '-45% 0px -45% 0px', threshold: 0 }
-    );
-    chapterRefs.current.forEach((el) => el && observer.observe(el));
-    return () => observer.disconnect();
-  }, []);
+  useEffect(() => 
+  {
+    const observer = new IntersectionObserver(entries => 
+    {
+      entries.forEach((entry) => 
+      {
+        if (!entry.isIntersecting) return
+        const index = Number((entry.target as HTMLElement).dataset.index)
+        if (!Number.isNaN(index)) setActiveChapter(index)
+      })
+    },
+    { 
+      rootMargin: '-45% 0px -45% 0px', threshold: 0 
+    })
+    chapterRefs.current.forEach((el) => el && observer.observe(el))
+    return () => observer.disconnect()
+  }, [])
 
-  const current = CHAPTERS[activeChapter];
+  const current = Chapters[activeChapter]
 
   return (
     <div className="scroll-smooth bg-white font-['Plus_Jakarta_Sans',sans-serif] text-slate-800 antialiased">
       {/* READ PROGRESS */}
-      <div
-        ref={progressRef}
-        className="read-progress fixed inset-x-0 top-0 z-[60] h-1 origin-left scale-x-0 bg-[#f26a21]"
-        aria-hidden="true"
-      />
+      <div ref={progressRef} className="read-progress fixed inset-x-0 top-0 z-[60] h-1 origin-left scale-x-0 bg-[#f26a21]" aria-hidden="true"/>
 
       <main className="about">
         {/* HERO */}
         <section className="about-hero relative grid gap-5 overflow-hidden bg-gradient-to-br from-[#0b2a4a] to-[#12385f] px-6 py-20 text-white md:px-[5%] lg:py-24">
-          <div
-            className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-[#f26a21] opacity-90"
-            aria-hidden="true"
-          />
+          <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-[#f26a21] opacity-90" aria-hidden="true"/>
           <div className="relative z-10 max-w-3xl space-y-5">
             <p className={`hero-tag ${eyebrow}`}>About Jaza Insurance Agency</p>
             <h1 className="text-4xl font-extrabold leading-[1.1] tracking-tight lg:text-6xl">
@@ -318,16 +248,10 @@ export default function AboutPage() {
               cover, honest answers and a team that walks the road with you.
             </p>
             <div className="hero-actions flex flex-wrap gap-4 pt-2">
-              <Link
-                className="btn btn-primary rounded-lg bg-[#f26a21] px-7 py-3.5 font-semibold text-white shadow-lg shadow-[#f26a21]/30 transition hover:-translate-y-0.5 hover:bg-[#d4560f]"
-                href="#start"
-              >
+              <Link className="btn btn-primary rounded-lg bg-[#f26a21] px-7 py-3.5 font-semibold text-white shadow-lg shadow-[#f26a21]/30 transition hover:-translate-y-0.5 hover:bg-[#d4560f]" href="#start">
                 Start your insurance business
               </Link>
-              <Link
-                className="btn btn-ghost rounded-lg border-2 border-white px-7 py-3.5 font-semibold text-white transition hover:bg-white hover:text-[#0b2a4a]"
-                href="#team"
-              >
+              <Link className="btn btn-ghost rounded-lg border-2 border-white px-7 py-3.5 font-semibold text-white transition hover:bg-white hover:text-[#0b2a4a]" href="#team">
                 Meet the team
               </Link>
             </div>
@@ -338,13 +262,7 @@ export default function AboutPage() {
         <section className="ceo section mx-auto grid max-w-7xl items-center gap-12 px-6 py-20 md:px-[5%] lg:grid-cols-[1fr_1.3fr] lg:gap-14">
           <Reveal>
             <div className="blob relative mx-auto aspect-square w-[min(360px,90%)] overflow-hidden rounded-[58%_42%_52%_48%/48%_56%_44%_52%] shadow-[-16px_16px_0_#cfd9ea]">
-              <Image
-                src="/images/lawrence-kamanda.jpg"
-                alt="Lawrence Kamanda, CEO"
-                fill
-                sizes="(max-width: 1024px) 90vw, 360px"
-                className="object-cover"
-              />
+              <Image src="/images/lawrence-kamanda.jpg" alt="Lawrence Kamanda, CEO" fill sizes="(max-width: 1024px) 90vw, 360px" className="object-cover"/>
             </div>
           </Reveal>
           <Reveal className="ceo-text space-y-4">
@@ -370,43 +288,27 @@ export default function AboutPage() {
         </section>
 
         {/* OUR STORY: pinned chapters */}
-        <section
-          className="chapters grid bg-[#071d35] px-6 text-white md:px-[5%] lg:grid-cols-[1fr_1.2fr] lg:gap-10"
-          id="story"
-          aria-label="Our story"
-        >
-          <div
-            className="chapters-pin sticky top-[72px] z-10 flex items-center gap-4 bg-[#071d35] py-3 lg:top-[76px] lg:h-[calc(100vh-76px)] lg:flex-col lg:items-start lg:justify-center lg:gap-2 lg:bg-transparent lg:py-0 lg:pl-[4%]"
-            aria-hidden="true"
-          >
+        <section className="chapters grid bg-[#071d35] px-6 text-white md:px-[5%] lg:grid-cols-[1fr_1.2fr] lg:gap-10" id="story" aria-label="Our story">
+          <div className="chapters-pin sticky top-[72px] z-10 flex items-center gap-4 bg-[#071d35] py-3 lg:top-[76px] lg:h-[calc(100vh-76px)] lg:flex-col lg:items-start lg:justify-center lg:gap-2 lg:bg-transparent lg:py-0 lg:pl-[4%]" aria-hidden="true">
             <span className="chapter-num text-5xl font-extrabold leading-none text-[#f26a21] lg:text-[clamp(5rem,14vw,11rem)]">
               {current.num}
             </span>
             <span className="chapter-label text-lg font-semibold tracking-wide">{current.label}</span>
             <div className="chapter-bar mt-4 hidden h-[120px] w-1 overflow-hidden rounded bg-white/20 lg:block">
-              <i
-                className="block w-full rounded bg-[#f26a21] transition-[height] duration-500 motion-reduce:transition-none"
-                style={{ height: `${((activeChapter + 1) / CHAPTERS.length) * 100}%` }}
+              <i className="block w-full rounded bg-[#f26a21] transition-[height] duration-500 motion-reduce:transition-none" style={{ height: `${((activeChapter + 1) / Chapters.length) * 100}%` }}
               />
             </div>
           </div>
 
           <div className="chapters-body">
-            {CHAPTERS.map((chapter, i) => (
-              <article
-                key={chapter.num}
-                ref={(el) => {
-                  chapterRefs.current[i] = el;
-                }}
-                data-index={i}
-                className={`chapter flex min-h-[60vh] flex-col justify-center transition-opacity duration-500 motion-reduce:transition-none lg:min-h-[85vh] ${
-                  i === activeChapter ? 'opacity-100' : 'opacity-30'
-                }`}
-              >
-                <h2 className="mb-3.5 text-3xl font-extrabold leading-[1.15] lg:text-4xl">{chapter.title}</h2>
-                <p className="max-w-[40ch] text-lg text-[#c9d6e4]">{chapter.text}</p>
-              </article>
-            ))}
+            {
+              Chapters.map((chapter, i) => (
+                <article key={chapter.num} ref={(el) => {chapterRefs.current[i] = el }} data-index={i} className={`chapter flex min-h-[60vh] flex-col justify-center transition-opacity duration-500 motion-reduce:transition-none lg:min-h-[85vh] ${i === activeChapter ? 'opacity-100' : 'opacity-30'}`}>
+                  <h2 className="mb-3.5 text-3xl font-extrabold leading-[1.15] lg:text-4xl">{chapter.title}</h2>
+                  <p className="max-w-[40ch] text-lg text-[#c9d6e4]">{chapter.text}</p>
+                </article>
+              ))
+            }
           </div>
         </section>
 
@@ -419,16 +321,18 @@ export default function AboutPage() {
             </h2>
           </Reveal>
           <div className="team grid gap-10 text-center sm:grid-cols-2 lg:grid-cols-3">
-            {TEAM.map((person) => (
-              <Reveal key={person.name} className="person">
-                <div className="relative mx-auto mb-4 h-40 w-40 overflow-hidden rounded-full border-4 border-[#f26a21] shadow-lg shadow-[#0b2a4a]/10">
-                  <Image src={person.image} alt={person.name} fill sizes="160px" className="object-cover" />
-                </div>
-                <h3 className="text-lg font-bold text-[#0b2a4a]">{person.name}</h3>
-                <p className="text-slate-500">{person.role}</p>
-                <p className="tagline mx-auto mt-2 max-w-[32ch] text-sm text-slate-600">{person.tagline}</p>
-              </Reveal>
-            ))}
+            {
+              Team.map(person => (
+                <Reveal key={person.name} className="person">
+                  <div className="relative mx-auto mb-4 h-40 w-40 overflow-hidden rounded-full border-4 border-[#f26a21] shadow-lg shadow-[#0b2a4a]/10">
+                    <Image src={person.image} alt={person.name} fill sizes="160px" className="object-cover" />
+                  </div>
+                  <h3 className="text-lg font-bold text-[#0b2a4a]">{person.name}</h3>
+                  <p className="text-slate-500">{person.role}</p>
+                  <p className="tagline mx-auto mt-2 max-w-[32ch] text-sm text-slate-600">{person.tagline}</p>
+                </Reveal>
+              ))
+            }
           </div>
         </section>
 
@@ -459,20 +363,17 @@ export default function AboutPage() {
             <h2 className="mt-2 text-3xl font-extrabold text-[#0b2a4a] lg:text-4xl">Part of a wider ecosystem</h2>
           </Reveal>
           <div className="cards mx-auto grid max-w-3xl gap-6 sm:grid-cols-2">
-            {NETWORK.map((item) => (
-              <Reveal key={item.name}>
-                <a
-                  className="card group block h-full rounded-xl border border-slate-200 border-t-4 border-t-[#f26a21] bg-white p-6 transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#0b2a4a]/10"
-                  href={item.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <h3 className="text-lg font-bold text-[#0b2a4a] transition group-hover:text-[#f26a21]">{item.name}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600">{item.blurb}</p>
-                  <span className="mt-4 inline-block text-sm font-semibold text-[#f26a21]">Visit website &rarr;</span>
-                </a>
-              </Reveal>
-            ))}
+            {
+              NETWORK.map(item => (
+                <Reveal key={item.name}>
+                  <Link className="card group block h-full rounded-xl border border-slate-200 border-t-4 border-t-[#f26a21] bg-white p-6 transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#0b2a4a]/10" href={item.href} target="_blank" rel="noopener noreferrer">
+                    <h3 className="text-lg font-bold text-[#0b2a4a] transition group-hover:text-[#f26a21]">{item.name}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600">{item.blurb}</p>
+                    <span className="mt-4 inline-block text-sm font-semibold text-[#f26a21]">Visit website &rarr;</span>
+                  </Link>
+                </Reveal>
+              ))
+            }
           </div>
         </section>
 
@@ -484,27 +385,18 @@ export default function AboutPage() {
           </Reveal>
           <Reveal>
             <div className="map mb-6 overflow-hidden rounded-2xl border border-slate-200 shadow-xl shadow-[#0b2a4a]/10">
-              <iframe
-                title="Our location on Google Maps"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                src="https://www.google.com/maps?q=-1.259443,36.8007568&z=17&output=embed"
-                className="block h-[380px] w-full border-0"
-              />
+              <iframe title="Our location on Google Maps" loading="lazy" referrerPolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=-1.259443,36.8007568&z=17&output=embed" className="block h-[380px] w-full border-0"/>
             </div>
             <p className="text-center">
-              <a
-                className="btn btn-outline inline-block rounded-lg border-2 border-[#0b2a4a] px-7 py-3.5 font-semibold text-[#0b2a4a] transition hover:bg-[#0b2a4a] hover:text-white"
-                href="https://www.google.com/maps/place/Advanta+Africa+Ltd/@-1.259443,36.8007568,17z"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <Link className="btn btn-outline inline-block rounded-lg border-2 border-[#0b2a4a] px-7 py-3.5 font-semibold text-[#0b2a4a] transition hover:bg-[#0b2a4a] hover:text-white" href="https://www.google.com/maps/place/Advanta+Africa+Ltd/@-1.259443,36.8007568,17z" target="_blank" rel="noopener noreferrer">
                 Open in Google Maps
-              </a>
+              </Link>
             </p>
           </Reveal>
         </section>
       </main>
     </div>
-  );
+  )
 }
+
+export default AboutPage
