@@ -1,13 +1,8 @@
-import type { Metadata } from 'next'
+'use client'
+
 import Image from 'next/image'
 import Link from 'next/link'
-import type { ReactNode } from 'react'
-
-export const metadata: Metadata = 
-{
-  title: 'Home Insurance | Jaza Insurance Agency',
-  description: 'Buildings and contents cover for your house and belongings from Jaza Insurance Agency.',
-}
+import { useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react'
 
 //Data type for a home product
 type HomeProduct = { id: string; title: string; description: string; covers: string[] }
@@ -74,6 +69,31 @@ const PropertyTypes = ['House or bungalow', 'Maisonette', 'Apartment'];
 const WallMaterials = ['Stone or brick', 'Concrete', 'Timber', 'Iron sheet', 'Other'];
 const Addons = ['High-value items (jewellery, art, electronics)', 'Flood and storm damage'];
 
+//Excess slider levels
+type ExcessLevel = 1 | 2 | 3
+
+const ExcessLevels: Record<ExcessLevel, { label: string; text: string }> = {
+  1: { label: 'Low', text: 'Low excess: a higher premium, but you pay less when you claim.' },
+  2: { label: 'Medium', text: 'Medium excess: a balance between premium and what you pay when you claim.' },
+  3: { label: 'High', text: 'High excess: a lower premium, but you pay more when you claim.' },
+}
+
+//API types
+type QuotePayload = {
+  formType: string
+  fields: Record<string, string>
+  consent: boolean
+  website?: string // honeypot: must stay empty for real users
+}
+
+type QuoteResult =
+  | { ok: true; reference: string; message: string }
+  | { ok: false; message: string }
+
+type FormStatus = 'idle' | 'submitting' | 'success' | 'error'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
+
 //Shared class strings
 const eyebrow = 'text-sm font-extrabold uppercase tracking-[0.12em] text-[#f26a21]';
 const fieldClass = 'mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3.5 py-3 text-base font-normal text-slate-900 shadow-sm transition focus:border-[#f26a21] focus:outline-none focus:ring-4 focus:ring-[#f26a21]/20';
@@ -84,8 +104,118 @@ const optionClass = 'flex cursor-pointer items-center gap-3 rounded-lg border bo
 const primaryButton = 'btn btn-primary rounded-lg bg-[#f26a21] px-7 py-3.5 text-center font-semibold text-white shadow-lg shadow-[#f26a21]/30 transition hover:-translate-y-0.5 hover:bg-[#d4560f]';
 const outlineButton = 'btn btn-outline rounded-lg border-2 border-[#0b2a4a] px-7 py-3.5 text-center font-semibold text-[#0b2a4a] transition hover:bg-[#0b2a4a] hover:text-white';
 
+//Sends the quote request to the backend
+const submitQuote = async (payload: QuotePayload): Promise<QuoteResult> =>
+{
+  try {
+    // TODO API: POST /api/quote/submit
+    const res = await fetch(`${API_URL}/api/quote/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, website: payload.website ?? '' }),
+    })
+
+    const data = await res.json().catch(() => null)
+
+    if (res.ok && data?.ok) return data as QuoteResult
+    if (res.status === 429) {
+      return { ok: false, message: 'Too many requests. Please wait a moment and try again.' }
+    }
+    return { ok: false, message: data?.message ?? 'Something went wrong. Please try again.' }
+  } catch {
+    return { ok: false, message: 'Network error. Please check your connection and try again.' }
+  }
+}
+
+//Builds the payload the API expects from the form's current values
+const buildPayload = (form: HTMLFormElement, excess: ExcessLevel): QuotePayload =>
+{
+  const data = new FormData(form)
+  const get = (key: string) => String(data.get(key) ?? '').trim()
+
+  return {
+    formType: 'home',
+    consent: data.get('consent') === 'on',
+    website: get('website'),
+    fields: {
+      name: get('name'),
+      phone: get('phone'),
+      email: get('email'),
+      role: get('role'),
+      property: get('property'),
+      location: get('location'),
+      bedrooms: get('bedrooms'),
+      size: get('size'),
+      walls: get('walls'),
+      buildingValue: get('buildingValue'),
+      contentsValue: get('contentsValue'),
+      addon: data.getAll('addon').map(String).join(', '),
+      excess: ExcessLevels[excess].label,
+    },
+  }
+}
+
+//Mirrors the server checks so people get instant feedback. The server stays the source of truth.
+const validatePayload = (payload: QuotePayload): string | null =>
+{
+  const { name, phone, email } = payload.fields
+  const digits = phone.replace(/[\s+-]/g, '')
+
+  if (name.length < 2) return 'Please enter your name.'
+  if (!/^\d{9,13}$/.test(digits)) return 'Please enter a valid phone number, for example 0712 345 678.'
+  if (email && !/^\S+@\S+\.\S+$/.test(email)) return 'Please enter a valid email address.'
+  if (!payload.consent) return 'Please agree to be contacted so we can respond to your request.'
+  return null
+}
+
 const HomeInsurancePage = () => 
 {
+  const [excess, setExcess] = useState<ExcessLevel>(2)
+  const [status, setStatus] = useState<FormStatus>('idle')
+  const [message, setMessage] = useState('')
+  const [reference, setReference] = useState('')
+
+  const handleExcessChange = (e: ChangeEvent<HTMLInputElement>) =>
+  {
+    setExcess(Number(e.target.value) as ExcessLevel)
+  }
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) =>
+  {
+    e.preventDefault()
+    if (status === 'submitting') return
+
+    const form = e.currentTarget
+    const payload = buildPayload(form, excess)
+
+    const error = validatePayload(payload)
+    if (error) {
+      setStatus('error')
+      setMessage(error)
+      return
+    }
+
+    setStatus('submitting')
+    setMessage('')
+
+    // TODO API: POST /api/quote/submit
+    const result = await submitQuote(payload)
+
+    if (result.ok) {
+      setStatus('success')
+      setReference(result.reference)
+      setMessage(result.message)
+      form.reset()
+      setExcess(2)
+      return
+    }
+
+    setStatus('error')
+    setMessage(result.message)
+  }
+
+  const isSubmitting = status === 'submitting'
+
   return (
     <div className="scroll-smooth bg-white font-['Plus_Jakarta_Sans',sans-serif] text-slate-800 antialiased">
       <main>
@@ -165,7 +295,7 @@ const HomeInsurancePage = () =>
           </div>
         </section>
 
-        {/* QUOTE FORM (display only for now) */}
+        {/* QUOTE FORM */}
         <section className="scroll-mt-24 bg-[#f2f5f9] px-6 py-20 md:px-[5%]" id="quote-home-form">
           <div className="mx-auto grid max-w-6xl items-start gap-10 lg:grid-cols-[1fr_1.3fr] lg:gap-14">
             <div className="space-y-5 lg:sticky lg:top-28">
@@ -187,7 +317,15 @@ const HomeInsurancePage = () =>
               </Link>
             </div>
 
-            <form className="module-form lead-form space-y-5 rounded-2xl border border-slate-200 bg-white p-8 shadow-xl shadow-[#0b2a4a]/5 sm:p-10" id="home-form" data-form-type="home">
+            <form className="module-form lead-form space-y-5 rounded-2xl border border-slate-200 bg-white p-8 shadow-xl shadow-[#0b2a4a]/5 sm:p-10" id="home-form" data-form-type="home" onSubmit={handleSubmit} noValidate>
+              {/* Honeypot: hidden from people, bots tend to fill it */}
+              <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true">
+                <label>
+                  Website
+                  <input type="text" name="website" tabIndex={-1} autoComplete="off" />
+                </label>
+              </div>
+
               <fieldset className={fieldsetClass}>
                 <legend className={legendClass}>I am the</legend>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -270,14 +408,14 @@ const HomeInsurancePage = () =>
 
               <fieldset className={fieldsetClass}>
                 <legend className={legendClass}>Excess: the amount you pay first when you claim</legend>
-                <input type="range" name="excess" id="excess-slider" min="1" max="3" defaultValue={2} aria-describedby="excess-text" className="mt-2 w-full accent-[#f26a21]" />
+                <input type="range" name="excess" id="excess-slider" min="1" max="3" value={excess} onChange={handleExcessChange} aria-describedby="excess-text" className="mt-2 w-full accent-[#f26a21]" />
                 <div className="mt-1 flex justify-between text-xs font-semibold uppercase tracking-[0.08em] text-slate-500" aria-hidden="true">
                   <span>Low</span>
                   <span>Medium</span>
                   <span>High</span>
                 </div>
                 <p id="excess-text" className="mt-3 text-sm text-slate-600">
-                  Medium excess: a balance between premium and what you pay when you claim.
+                  {ExcessLevels[excess].text}
                 </p>
               </fieldset>
 
@@ -302,8 +440,24 @@ const HomeInsurancePage = () =>
                 <span>I agree that Jaza Insurance Agency may use my details to contact me about this request.</span>
               </label>
 
-              <button className="btn btn-primary mt-2 w-full rounded-lg bg-[#f26a21] py-3.5 font-semibold text-white shadow-lg shadow-[#f26a21]/30 transition hover:bg-[#d4560f] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f26a21]/30"type="button" >
-                Request quote
+              {
+                status === 'error' && (
+                  <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                    {message}
+                  </p>
+                )
+              }
+
+              {
+                status === 'success' && (
+                  <p role="status" className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                    <span className="font-semibold">{message}</span> Your reference is <strong>{reference}</strong>. We will call you soon.
+                  </p>
+                )
+              }
+
+              <button className="btn btn-primary mt-2 w-full rounded-lg bg-[#f26a21] py-3.5 font-semibold text-white shadow-lg shadow-[#f26a21]/30 transition hover:bg-[#d4560f] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f26a21]/30 disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Sending...' : 'Request quote'}
               </button>
             </form>
           </div>

@@ -1,13 +1,8 @@
-import type { Metadata } from 'next'
+'use client'
+
 import Image from 'next/image'
 import Link from 'next/link'
-import type { ReactNode } from 'react'
-
-export const metadata: Metadata = 
-{
-  title: 'Medical Insurance | Jaza Insurance Agency',
-  description: 'Individual, corporate and seniors medical plans and personal accident cover from Jaza Insurance Agency.',
-}
+import { useState, type FormEvent, type ReactNode } from 'react'
 
 //Data type for a medical product
 type MedicalProduct = { id: string; title: string; description: string; covers: string[] }
@@ -90,6 +85,22 @@ const ClaimSteps: ClaimStep[] = [
 
 const PlanTypes = ['Individual medical', 'Corporate medical', 'Seniors medical', 'Personal accident cover'];
 
+//API types
+type QuotePayload = {
+  formType: string
+  fields: Record<string, string>
+  consent: boolean
+  website?: string // honeypot: must stay empty for real users
+}
+
+type QuoteResult =
+  | { ok: true; reference: string; message: string }
+  | { ok: false; message: string }
+
+type FormStatus = 'idle' | 'submitting' | 'success' | 'error'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
+
 //Shared class strings
 const eyebrow = 'text-sm font-extrabold uppercase tracking-[0.12em] text-[#f26a21]';
 const fieldClass = 'mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3.5 py-3 text-base font-normal text-slate-900 shadow-sm transition focus:border-[#f26a21] focus:outline-none focus:ring-4 focus:ring-[#f26a21]/20';
@@ -97,8 +108,104 @@ const labelClass = 'block text-sm font-semibold text-slate-700';
 const primaryButton = 'btn btn-primary rounded-lg bg-[#f26a21] px-7 py-3.5 text-center font-semibold text-white shadow-lg shadow-[#f26a21]/30 transition hover:-translate-y-0.5 hover:bg-[#d4560f]';
 const outlineButton = 'btn btn-outline rounded-lg border-2 border-[#0b2a4a] px-7 py-3.5 text-center font-semibold text-[#0b2a4a] transition hover:bg-[#0b2a4a] hover:text-white';
 
+//Sends the quote request to the backend
+const submitQuote = async (payload: QuotePayload): Promise<QuoteResult> =>
+{
+  try {
+    // TODO API: POST /api/quote/submit
+    const res = await fetch(`${API_URL}/api/quote/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, website: payload.website ?? '' }),
+    })
+
+    const data = await res.json().catch(() => null)
+
+    if (res.ok && data?.ok) return data as QuoteResult
+    if (res.status === 429) {
+      return { ok: false, message: 'Too many requests. Please wait a moment and try again.' }
+    }
+    return { ok: false, message: data?.message ?? 'Something went wrong. Please try again.' }
+  } catch {
+    return { ok: false, message: 'Network error. Please check your connection and try again.' }
+  }
+}
+
+//Builds the payload the API expects from the form's current values
+const buildPayload = (form: HTMLFormElement): QuotePayload =>
+{
+  const data = new FormData(form)
+  const get = (key: string) => String(data.get(key) ?? '').trim()
+
+  return {
+    formType: 'medical',
+    consent: data.get('consent') === 'on',
+    website: get('website'),
+    fields: {
+      name: get('name'),
+      phone: get('phone'),
+      email: get('email'),
+      cover: get('cover'),
+      people: get('people'),
+      company: get('company'),
+    },
+  }
+}
+
+//Mirrors the server checks so people get instant feedback. The server stays the source of truth.
+const validatePayload = (payload: QuotePayload): string | null =>
+{
+  const { name, phone, email } = payload.fields
+  const digits = phone.replace(/[\s+-]/g, '')
+
+  if (name.length < 2) return 'Please enter your name.'
+  if (!/^\d{9,13}$/.test(digits)) return 'Please enter a valid phone number, for example 0712 345 678.'
+  if (email && !/^\S+@\S+\.\S+$/.test(email)) return 'Please enter a valid email address.'
+  if (!payload.consent) return 'Please agree to be contacted so we can respond to your request.'
+  return null
+}
+
 const MedicalPage = () => 
 {
+    const [status, setStatus] = useState<FormStatus>('idle')
+    const [message, setMessage] = useState('')
+    const [reference, setReference] = useState('')
+
+    const handleSubmit = async (e: FormEvent<HTMLFormElement>) =>
+    {
+        e.preventDefault()
+        if (status === 'submitting') return
+
+        const form = e.currentTarget
+        const payload = buildPayload(form)
+
+        const error = validatePayload(payload)
+        if (error) {
+            setStatus('error')
+            setMessage(error)
+            return
+        }
+
+        setStatus('submitting')
+        setMessage('')
+
+        // TODO API: POST /api/quote/submit
+        const result = await submitQuote(payload)
+
+        if (result.ok) {
+            setStatus('success')
+            setReference(result.reference)
+            setMessage(result.message)
+            form.reset()
+            return
+        }
+
+        setStatus('error')
+        setMessage(result.message)
+    }
+
+    const isSubmitting = status === 'submitting'
+
     return (
         <div className="scroll-smooth bg-white font-['Plus_Jakarta_Sans',sans-serif] text-slate-800 antialiased">
             <main>
@@ -162,7 +269,7 @@ const MedicalPage = () =>
                                     </ul>
 
                                     <div className="product-actions mt-auto flex flex-col gap-3 pt-8 sm:flex-row">
-                                        <Link className={primaryButton} href="/#quote">
+                                        <Link className={primaryButton} href="#quote-medical-form">
                                             Get a quote
                                         </Link>
                                         <Link className={outlineButton} href="tel:+254794794410">
@@ -175,7 +282,7 @@ const MedicalPage = () =>
                     </div>
                 </section>
 
-                {/* QUOTE FORM (display only for now) */}
+                {/* QUOTE FORM */}
                 <section className="scroll-mt-24 bg-[#f2f5f9] px-6 py-20 md:px-[5%]" id="quote-medical-form">
                     <div className="mx-auto grid max-w-6xl items-start gap-10 lg:grid-cols-[1fr_1.3fr] lg:gap-14">
                         <div className="space-y-5 lg:sticky lg:top-28">
@@ -197,7 +304,15 @@ const MedicalPage = () =>
                         </Link>
                         </div>
 
-                        <form className="module-form lead-form space-y-5 rounded-2xl border border-slate-200 bg-white p-8 shadow-xl shadow-[#0b2a4a]/5 sm:p-10" id="medical-form" data-form-type="medical">
+                        <form className="module-form lead-form space-y-5 rounded-2xl border border-slate-200 bg-white p-8 shadow-xl shadow-[#0b2a4a]/5 sm:p-10" id="medical-form" data-form-type="medical" onSubmit={handleSubmit} noValidate>
+                            {/* Honeypot: hidden from people, bots tend to fill it */}
+                            <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true">
+                                <label>
+                                    Website
+                                    <input type="text" name="website" tabIndex={-1} autoComplete="off" />
+                                </label>
+                            </div>
+
                             <label className={labelClass}>
                                 Plan type
                                 <select name="cover" defaultValue="" className={fieldClass}>
@@ -244,7 +359,25 @@ const MedicalPage = () =>
                                 <span>I agree that Jaza Insurance Agency may use my details to contact me about this request.</span>
                             </label>
 
-                            <button className="btn btn-primary mt-2 w-full rounded-lg bg-[#f26a21] py-3.5 font-semibold text-white shadow-lg shadow-[#f26a21]/30 transition hover:bg-[#d4560f] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f26a21]/30" type="button">Request quote</button>
+                            {
+                                status === 'error' && (
+                                    <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                                        {message}
+                                    </p>
+                                )
+                            }
+
+                            {
+                                status === 'success' && (
+                                    <p role="status" className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                                        <span className="font-semibold">{message}</span> Your reference is <strong>{reference}</strong>. We will call you soon.
+                                    </p>
+                                )
+                            }
+
+                            <button className="btn btn-primary mt-2 w-full rounded-lg bg-[#f26a21] py-3.5 font-semibold text-white shadow-lg shadow-[#f26a21]/30 transition hover:bg-[#d4560f] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f26a21]/30 disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={isSubmitting}>
+                                {isSubmitting ? 'Sending...' : 'Request quote'}
+                            </button>
                         </form>
                     </div>
                 </section>
